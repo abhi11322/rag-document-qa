@@ -11,5 +11,5 @@ langchain-chroma
 python-dotenv
 pydantic
 
-# LLM provider client — to be finalized when the generation step is implemented
-# e.g. langchain-openai, langchain-anthropic, or google-generativeai
+# LLM provider client (Gemini)
+langchain-google-genai
