@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+langchain
+langchain-community
+langchain-text-splitters
+pypdf
+sentence-transformers
+faiss-cpu
+python-dotenv
+pydantic
+
+# LLM provider client — to be finalized when the generation step is implemented
+# e.g. langchain-openai, langchain-anthropic, or google-generativeai
