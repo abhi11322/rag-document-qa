@@ -1,0 +1,57 @@
+[
+  {
+    "question": "According to the paper, what are the three stages that RAG research is categorized into?",
+    "relevant_pages": [2],
+    "notes": "Page 2: 'we categorize it into three stages: Naive RAG, Advanced RAG, and Modular RAG'."
+  },
+  {
+    "question": "What are the main drawbacks of Naive RAG mentioned in the paper?",
+    "relevant_pages": [3],
+    "notes": "Page 3: explicit 'Retrieval Challenges / Generation Difficulties / Augmentation Hurdles' list. Struggle case: prior baseline testing returned pages 1, 2, 14, never page 3."
+  },
+  {
+    "question": "What three steps make up the indexing-retrieval-generation pipeline shown in Figure 2?",
+    "relevant_pages": [3, 4],
+    "notes": "Fig. 2 caption (page 3) and Fig. 3 caption (page 4) both state Naive RAG/the RAG process consists of indexing, retrieval, and generation."
+  },
+  {
+    "question": "What is RAG-Fusion and how does it work?",
+    "relevant_pages": [4],
+    "notes": "Page 4, Modular RAG 'New Modules': 'RAG-Fusion addresses traditional search limitations by employing a multi-query strategy...'."
+  },
+  {
+    "question": "How does RAG differ from fine-tuning according to the paper?",
+    "relevant_pages": [5],
+    "notes": "Page 5, section 'D. RAG vs Fine-tuning'. Struggle case: prior baseline testing returned pages 1, 2, 14, never page 5."
+  },
+  {
+    "question": "What is query expansion in RAG?",
+    "relevant_pages": [8],
+    "notes": "Page 8, 'C. Query Optimization - 1) Query Expansion'. Struggle case: this exact natural-language phrasing missed page 8 even at k=10 in prior testing; only a keyword-style rephrasing found it."
+  },
+  {
+    "question": "What embedding evaluation leaderboard does the paper mention for benchmarking embedding models?",
+    "relevant_pages": [9],
+    "notes": "Page 9, 'D. Embedding': 'Hugging Face's MTEB leaderboard... C-MTEB focuses on Chinese capability'."
+  },
+  {
+    "question": "What is the 'Lost in the middle' problem mentioned in the Generation section?",
+    "relevant_pages": [10],
+    "notes": "Page 10, 'IV. Generation - A. Context Curation', verbatim phrase present."
+  },
+  {
+    "question": "What four abilities does RAG evaluation assess, in addition to the three quality scores?",
+    "relevant_pages": [12],
+    "notes": "Page 12, 'VI.C. Evaluation Aspects': noise robustness, negative rejection, information integration, counterfactual robustness."
+  },
+  {
+    "question": "What evaluation frameworks or metrics like BERTScore does the paper mention for assessing RAG outputs?",
+    "relevant_pages": [15],
+    "notes": "Page 15, 'D. Evaluation Benchmarks and Tools'. Confirmed earlier: keyword query 'BertScore evaluation metric' hit page 15 at rank 1."
+  },
+  {
+    "question": "What does the paper conclude about the three RAG developmental paradigms?",
+    "relevant_pages": [16],
+    "notes": "Page 16, 'VIII. Conclusion': 'three developmental paradigms within the RAG framework: Naive, Advanced, and Modular RAG'."
+  }
+]
