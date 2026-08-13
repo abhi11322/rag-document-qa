@@ -1,11 +1,3 @@
-"""RAG pipeline: retrieval from Chroma + reranking + grounded LLM generation.
-
-Wires together app.vector_store (retrieval), app.reranker (candidate
-reranking), and app.llm_providers (generation) into a single ask(question)
-call that returns a grounded answer plus deduplicated source page
-references.
-"""
-
 from __future__ import annotations
 
 import os
@@ -48,11 +40,7 @@ def retrieve_chunks_reranked(
     top_n: int = DEFAULT_RERANK_TOP_K,
     reranker=None,
 ):
-    """Retrieve a larger candidate set from Chroma, then rerank down to top_n.
-
-    Reuses retrieve_chunks() for the initial Chroma similarity search, so
-    the baseline retrieval logic is never duplicated.
-    """
+    """Retrieve a larger candidate set from Chroma, then rerank down to top_n."""
     store = store or load_vector_store()
     reranker = reranker or get_reranker()
 

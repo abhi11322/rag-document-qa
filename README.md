@@ -110,7 +110,7 @@ Empty question:
 - **Vector database**: ChromaDB, persisted to `data/chroma/` (configurable via `CHROMA_PERSIST_DIR`). Chosen for simple local persistence with no external service to run.
 - **Retrieval**: plain similarity search, top-4 chunks per query (`DEFAULT_TOP_K` in `app/rag.py`), no reranking or hybrid search (out of scope for this assessment).
 - **LLM**: Google Gemini (`gemini-3.5-flash-lite` by default) via `langchain-google-genai`. Chosen as a current, low-cost, non-preview model available on a free-tier API key. Provider is abstracted (`app/llm_providers.py`) behind `LLM_PROVIDER`/`LLM_MODEL`/`LLM_API_KEY` env vars, so switching providers (e.g. OpenAI, Anthropic) or models means changing one default/env var, not rewriting the pipeline.
-- **Grounded prompting**: the prompt (`app/rag.py::PROMPT_TEMPLATE`) explicitly instructs the model to answer only from the provided context, to say so verbatim when the context is insufficient, and not to fabricate citations — verified in `scripts/test_rag.py` and `scripts/test_api.py`, including an out-of-document question.
+- **Grounded prompting**: the prompt (`app/rag.py::PROMPT_TEMPLATE`) explicitly instructs the model to answer only from the provided context, to say so verbatim when the context is insufficient, and not to fabricate citations, including for out-of-document questions.
 
 ## Environment Variables
 
@@ -133,13 +133,11 @@ See `.env.example` for the full list with comments. Summary:
 - **No conversation memory**: each `/ask` request is independent; there is no multi-turn context.
 - **No authentication or rate limiting** on the API.
 - **Source references are page-level only** (via `page_number`), not exact text spans within a page.
-- **Gemini free-tier quota**: the default `gemini-3.5-flash-lite` free-tier key is limited to a small number of generation requests per day. Heavy testing (e.g. running all scripts repeatedly) can exhaust it; retrieval (`scripts/test_retrieval.py`) is unaffected since it doesn't call the LLM. A paid key or a different `LLM_MODEL` removes this constraint.
+- **Gemini free-tier quota**: the default `gemini-3.5-flash-lite` free-tier key is limited to a small number of generation requests per day. Heavy testing (e.g. running `/ask` repeatedly) can exhaust it; retrieval (`scripts/evaluate_retrieval.py`) is unaffected since it doesn't call the LLM. A paid key or a different `LLM_MODEL` removes this constraint.
 - **Gemini model availability shifts over time**: Google periodically retires older model names for new API keys/projects (e.g. the entire `gemini-2.5` generation was unavailable to this project's key as of this writing). If `/ask` starts returning a 404 "model no longer available" error, check currently entitled models (`client.models.list()` plus a live test call, since the catalog can list models a given key isn't actually entitled to use) and update `LLM_MODEL` or `DEFAULT_GEMINI_MODEL`.
 
 ## Testing
 
-Verification scripts (run from the project root, after `python scripts/build_index.py`):
-- `python scripts/test_ingestion.py` — ingestion/chunking sanity check
-- `python scripts/test_retrieval.py` — Chroma similarity search sanity check (requires no LLM)
-- `python scripts/test_rag.py` — end-to-end RAG generation, including a grounded-refusal check (requires `LLM_API_KEY`)
-- `python scripts/test_api.py` — FastAPI endpoint tests via `TestClient` (health, valid/invalid/out-of-domain questions)
+- `python scripts/build_index.py` — builds/rebuilds the Chroma index from `data/Document.pdf`.
+- `python scripts/evaluate_retrieval.py` — runs the baseline-vs-reranked retrieval evaluation (Recall@1/@3/@5); requires no LLM calls.
+- The API itself can be exercised via `GET /docs` (interactive Swagger UI) or the curl examples above.

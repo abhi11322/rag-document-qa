@@ -1,13 +1,3 @@
-"""Local cross-encoder reranking for retrieved chunks.
-
-Chroma's similarity search uses a bi-encoder (all-MiniLM-L6-v2) that embeds
-the query and each chunk independently — this struggles to discriminate
-between chunks for many natural-language questions (see
-scripts/evaluate_retrieval.py for the measured baseline). A cross-encoder
-jointly encodes each (query, chunk) pair, giving sharper relevance scoring
-over a small second-pass candidate set. Runs entirely locally — no API.
-"""
-
 from __future__ import annotations
 
 import os

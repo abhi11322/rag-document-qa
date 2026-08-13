@@ -1,11 +1,3 @@
-"""LLM provider abstraction for the generation stage.
-
-Keeps the concrete LLM API (provider, model, key) swappable behind a small
-interface so app/rag.py never needs to change when the provider changes.
-Provider, model, and key are all read from environment variables — never
-hard-coded.
-"""
-
 from __future__ import annotations
 
 import os

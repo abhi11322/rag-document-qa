@@ -1,10 +1,3 @@
-"""PDF ingestion and text chunking.
-
-Loads a PDF into per-page LangChain Documents (preserving page numbers in
-metadata) and splits those pages into overlapping chunks suitable for
-embedding in a later stage.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path

@@ -1,16 +1,15 @@
 """Retrieval evaluation: BASELINE (no reranking) vs RERANKED, side by side.
 
-Runs a small, manually curated, page-verified question set against two
-retrievers and reports Recall@1/@3/@5 for each:
+Runs the question set in data/eval_questions.json against two retrievers
+and reports Recall@1/@3/@5 for each:
 
   - BASELINE: app.rag.retrieve_chunks — plain Chroma similarity search,
-    no reranking. This pass is unchanged from before reranking existed,
-    so it remains a stable reference point.
-  - RERANKED: app.rag.retrieve_chunks_reranked — the same size candidate
-    pool from Chroma, reordered by a local cross-encoder (app.reranker).
+    no reranking.
+  - RERANKED: app.rag.retrieve_chunks_reranked — the same candidate pool
+    from Chroma, reordered by a local cross-encoder (app.reranker).
 
-This is a retrieval-only evaluation: it never calls the LLM (Gemini), and
-it does not modify embeddings, Chroma, or FastAPI behavior.
+Retrieval-only: does not call the LLM (Gemini) and does not modify
+embeddings, Chroma, or FastAPI behavior.
 
 Run from the project root (after scripts/build_index.py):
     python scripts/evaluate_retrieval.py

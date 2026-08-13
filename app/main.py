@@ -1,10 +1,3 @@
-"""FastAPI application exposing the RAG pipeline over HTTP.
-
-Thin HTTP layer only — all retrieval, prompt construction, and generation
-logic lives in app.rag / app.vector_store / app.llm_providers and is reused
-here, not duplicated.
-"""
-
 from __future__ import annotations
 
 import logging

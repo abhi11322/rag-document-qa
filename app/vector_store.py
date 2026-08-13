@@ -1,11 +1,3 @@
-"""Embedding generation and Chroma vector store persistence.
-
-Builds a Chroma collection from chunked Documents (see app.ingestion) using
-a local Sentence Transformers embedding model, and loads that collection
-back for similarity search. No LLM API is used here — embeddings are
-computed entirely locally.
-"""
-
 from __future__ import annotations
 
 import os
