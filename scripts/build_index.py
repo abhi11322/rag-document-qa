@@ -4,6 +4,7 @@ Run from the project root:
     python scripts/build_index.py
 """
 
+import os
 import sys
 import time
 from pathlib import Path
@@ -17,7 +18,10 @@ load_dotenv()
 from app.ingestion import ingest_pdf
 from app.vector_store import build_vector_store, get_embedding_model, resolve_persist_dir
 
-PDF_PATH = Path(__file__).resolve().parent.parent / "data" / "Document.pdf"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PDF_PATH = Path(os.getenv("PDF_PATH", PROJECT_ROOT / "data" / "Document.pdf"))
+if not PDF_PATH.is_absolute():
+    PDF_PATH = PROJECT_ROOT / PDF_PATH
 
 
 def main() -> None:

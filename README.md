@@ -8,7 +8,23 @@ Ingestion, chunking, embedding, ChromaDB retrieval, grounded generation (Gemini)
 
 ## Overview
 
-*To be completed: full narrative description of the app.*
+A PDF-based Retrieval-Augmented Generation (RAG) application. It answers user questions about a single source document (`data/Document.pdf`, a 21-page paper on RAG) by combining semantic retrieval with an LLM, and exposes that functionality through a FastAPI `POST /ask` endpoint.
+
+Pipeline:
+
+```
+Document.pdf
+  -> PyPDFLoader (page-level text extraction, page numbers preserved)
+  -> RecursiveCharacterTextSplitter (chunking, page metadata preserved)
+  -> Sentence Transformers embeddings (local, no API)
+  -> ChromaDB (persisted vector store)
+  -> similarity search (top-k chunk retrieval)
+  -> grounded prompt (retrieved chunks + question)
+  -> Gemini (answer generation)
+  -> { answer, sources (deduplicated page numbers) }
+```
+
+Each stage lives in its own module under `app/` (`ingestion.py`, `vector_store.py`, `rag.py`, `llm_providers.py`, `main.py`), reused end-to-end without duplication.
 
 ## Tech Stack
 
@@ -64,10 +80,65 @@ curl -X POST http://127.0.0.1:8000/ask \
 
 Questions that are empty/whitespace-only return HTTP 422. Questions unrelated to the document return HTTP 200 with an answer stating the information could not be found in the document, rather than a fabricated answer.
 
+**More example questions and responses:**
+
+Out-of-document question:
+```json
+{"question": "What is the capital of France?"}
+```
+```json
+{
+  "answer": "The information could not be found in the provided document.",
+  "sources": [
+    {"page_number": 21, "source": "Document.pdf"},
+    {"page_number": 16, "source": "Document.pdf"}
+  ]
+}
+```
+(Retrieval always returns its top-k nearest chunks, but the prompt instructs the LLM to answer only from that context — here it correctly refuses rather than using outside knowledge.)
+
+Empty question:
+```json
+{"question": ""}
+```
+→ HTTP 422 (Pydantic validation error; `question` must be a non-empty, non-whitespace string).
+
 ## Model Choices & Reasons
 
-*To be completed.*
+- **Chunking**: `RecursiveCharacterTextSplitter`, chunk size 1000 characters with 150 character overlap (`app/ingestion.py`). Large enough to keep paragraphs coherent for a dense academic paper, with overlap to avoid severing ideas at chunk boundaries. Configurable via function parameters.
+- **Embeddings**: `sentence-transformers/all-MiniLM-L6-v2`, run locally via `langchain-huggingface` (no embedding API call). Small (~80MB), fast on CPU, and a well-established general-purpose sentence embedding model — sufficient for this single-document assessment. Configurable via the `EMBEDDING_MODEL` env var.
+- **Vector database**: ChromaDB, persisted to `data/chroma/` (configurable via `CHROMA_PERSIST_DIR`). Chosen for simple local persistence with no external service to run.
+- **Retrieval**: plain similarity search, top-4 chunks per query (`DEFAULT_TOP_K` in `app/rag.py`), no reranking or hybrid search (out of scope for this assessment).
+- **LLM**: Google Gemini (`gemini-2.5-flash` by default) via `langchain-google-genai`. Chosen for a usable free-tier API key. Provider is abstracted (`app/llm_providers.py`) behind `LLM_PROVIDER`/`LLM_MODEL`/`LLM_API_KEY` env vars, so switching providers (e.g. OpenAI, Anthropic) means adding one class, not rewriting the pipeline.
+- **Grounded prompting**: the prompt (`app/rag.py::PROMPT_TEMPLATE`) explicitly instructs the model to answer only from the provided context, to say so verbatim when the context is insufficient, and not to fabricate citations — verified in `scripts/test_rag.py` and `scripts/test_api.py`, including an out-of-document question.
+
+## Environment Variables
+
+See `.env.example` for the full list with comments. Summary:
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `LLM_PROVIDER` | LLM provider to use | `gemini` |
+| `LLM_MODEL` | Model name for that provider | `gemini-2.5-flash` |
+| `LLM_API_KEY` | API key for the LLM provider (secret — never commit) | *(required, no default)* |
+| `PDF_PATH` | Source PDF to ingest | `data/Document.pdf` |
+| `EMBEDDING_MODEL` | Local embedding model | `sentence-transformers/all-MiniLM-L6-v2` |
+| `CHROMA_PERSIST_DIR` | Where the Chroma vector database is stored | `data/chroma` |
 
 ## Limitations
 
-*To be completed.*
+- **Retrieval quality on broad/natural-language questions is inconsistent.** `all-MiniLM-L6-v2` is a small general-purpose embedding model, not tuned for asymmetric question→passage retrieval. On this document, a few generic, keyword-dense passages (e.g. the paper's contributions list) tend to rank highly across many unrelated questions, sometimes crowding out the actual answer passage from the top-k results. Keyword-style queries retrieve noticeably better than natural-language questions in testing. This was diagnosed in detail during development and is a known, accepted limitation rather than a bug.
+- **Single-document, single-collection**: the app is wired to one PDF (`data/Document.pdf`) and one Chroma collection; it does not support multi-document ingestion or per-request document selection.
+- **No reranking, hybrid search, caching, or evaluation metrics** — explicitly out of scope for this assessment (listed as optional features).
+- **No conversation memory**: each `/ask` request is independent; there is no multi-turn context.
+- **No authentication or rate limiting** on the API.
+- **Source references are page-level only** (via `page_number`), not exact text spans within a page.
+- **Gemini free-tier quota**: the default `gemini-2.5-flash` free-tier key is limited to a small number of generation requests per day. Heavy testing (e.g. running all scripts repeatedly) can exhaust it; retrieval (`scripts/test_retrieval.py`) is unaffected since it doesn't call the LLM. A paid key or a different `LLM_MODEL` removes this constraint.
+
+## Testing
+
+Verification scripts (run from the project root, after `python scripts/build_index.py`):
+- `python scripts/test_ingestion.py` — ingestion/chunking sanity check
+- `python scripts/test_retrieval.py` — Chroma similarity search sanity check (requires no LLM)
+- `python scripts/test_rag.py` — end-to-end RAG generation, including a grounded-refusal check (requires `LLM_API_KEY`)
+- `python scripts/test_api.py` — FastAPI endpoint tests via `TestClient` (health, valid/invalid/out-of-domain questions)

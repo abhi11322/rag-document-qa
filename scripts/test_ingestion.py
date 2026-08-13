@@ -4,14 +4,22 @@ Run from the project root:
     python scripts/test_ingestion.py
 """
 
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from app.ingestion import ingest_pdf
 
-PDF_PATH = Path(__file__).resolve().parent.parent / "data" / "Document.pdf"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PDF_PATH = Path(os.getenv("PDF_PATH", PROJECT_ROOT / "data" / "Document.pdf"))
+if not PDF_PATH.is_absolute():
+    PDF_PATH = PROJECT_ROOT / PDF_PATH
 
 
 def main() -> None:
