@@ -15,7 +15,7 @@ Project scaffold only. The ingestion and retrieval pipeline has not been impleme
 - **Python**
 - **FastAPI** — HTTP API (`POST /ask`)
 - **LangChain** — orchestration
-- **FAISS** — vector store
+- **ChromaDB** — vector store
 - **Sentence Transformers (Hugging Face)** — embeddings
 - **LLM API** — answer generation (provider to be finalized)
 

@@ -6,10 +6,8 @@ env/
 
 .env
 
-# Vector store index files (regenerated from source PDF)
-data/index/
-*.faiss
-*.pkl
+# Vector store files (regenerated from source PDF)
+data/chroma/
 
 .pytest_cache/
 .mypy_cache/
