@@ -12,7 +12,7 @@ import os
 from abc import ABC, abstractmethod
 
 DEFAULT_LLM_PROVIDER = "gemini"
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
 
 
 class LLMProvider(ABC):
@@ -34,7 +34,13 @@ class GeminiProvider(LLMProvider):
 
     def generate(self, prompt: str) -> str:
         response = self._client.invoke(prompt)
-        return response.content
+        content = response.content
+        if isinstance(content, list):
+            return "".join(
+                part.get("text", "") if isinstance(part, dict) else str(part)
+                for part in content
+            )
+        return content
 
 
 def get_llm_provider(
@@ -59,7 +65,7 @@ def get_llm_provider(
                 "LLM_API_KEY is not set. To use the Gemini provider, set these "
                 "environment variables (e.g. in a .env file):\n"
                 "  LLM_PROVIDER=gemini\n"
-                "  LLM_MODEL=gemini-2.5-flash   (optional, this is the default)\n"
+                "  LLM_MODEL=gemini-3.5-flash-lite   (optional, this is the default)\n"
                 "  LLM_API_KEY=<your Google AI Studio API key>\n"
                 "Get a key at https://aistudio.google.com/apikey"
             )
