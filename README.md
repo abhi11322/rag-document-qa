@@ -4,7 +4,7 @@ A Retrieval-Augmented Generation (RAG) application that answers questions about 
 
 ## Status
 
-Ingestion, chunking, embedding, ChromaDB retrieval, grounded generation (Gemini), and the FastAPI layer are implemented.
+Ingestion, chunking, embedding, ChromaDB retrieval, cross-encoder reranking, grounded generation (Gemini), retrieval evaluation, and the FastAPI layer are implemented.
 
 ## Overview
 
@@ -18,13 +18,14 @@ Document.pdf
   -> RecursiveCharacterTextSplitter (chunking, page metadata preserved)
   -> Sentence Transformers embeddings (local, no API)
   -> ChromaDB (persisted vector store)
-  -> similarity search (top-k chunk retrieval)
-  -> grounded prompt (retrieved chunks + question)
+  -> similarity search (top candidate_k chunks, default 10)
+  -> cross-encoder reranking (local, reorders candidates, keeps top_n, default 4)
+  -> grounded prompt (reranked chunks + question)
   -> Gemini (answer generation)
   -> { answer, sources (deduplicated page numbers) }
 ```
 
-Each stage lives in its own module under `app/` (`ingestion.py`, `vector_store.py`, `rag.py`, `llm_providers.py`, `main.py`), reused end-to-end without duplication.
+Each stage lives in its own module under `app/` (`ingestion.py`, `vector_store.py`, `rag.py`, `reranker.py`, `llm_providers.py`, `main.py`), reused end-to-end without duplication.
 
 ## Tech Stack
 
@@ -32,7 +33,7 @@ Each stage lives in its own module under `app/` (`ingestion.py`, `vector_store.p
 - **FastAPI** — HTTP API (`POST /ask`, `GET /health`)
 - **LangChain** — orchestration
 - **ChromaDB** — vector store
-- **Sentence Transformers (Hugging Face)** — embeddings
+- **Sentence Transformers (Hugging Face)** — embeddings, plus a local cross-encoder for reranking
 - **Google Gemini** — answer generation
 
 ## Setup
@@ -108,7 +109,7 @@ Empty question:
 - **Chunking**: `RecursiveCharacterTextSplitter`, chunk size 1000 characters with 150 character overlap (`app/ingestion.py`). Large enough to keep paragraphs coherent for a dense academic paper, with overlap to avoid severing ideas at chunk boundaries. Configurable via function parameters.
 - **Embeddings**: `sentence-transformers/all-MiniLM-L6-v2`, run locally via `langchain-huggingface` (no embedding API call). Small (~80MB), fast on CPU, and a well-established general-purpose sentence embedding model — sufficient for this single-document assessment. Configurable via the `EMBEDDING_MODEL` env var.
 - **Vector database**: ChromaDB, persisted to `data/chroma/` (configurable via `CHROMA_PERSIST_DIR`). Chosen for simple local persistence with no external service to run.
-- **Retrieval**: plain similarity search, top-4 chunks per query (`DEFAULT_TOP_K` in `app/rag.py`), no reranking or hybrid search (out of scope for this assessment).
+- **Retrieval**: similarity search retrieves the top `RETRIEVAL_CANDIDATE_K` candidates (default 10), then a local cross-encoder (`cross-encoder/ms-marco-MiniLM-L-6-v2`, `app/reranker.py`) reranks them down to `RETRIEVAL_TOP_K` (default 4) before they're passed to the LLM. `scripts/evaluate_retrieval.py` measures the Recall@1/@3/@5 improvement this gives over plain similarity search. No hybrid search (out of scope for this assessment).
 - **LLM**: Google Gemini (`gemini-3.5-flash-lite` by default) via `langchain-google-genai`. Chosen as a current, low-cost, non-preview model available on a free-tier API key. Provider is abstracted (`app/llm_providers.py`) behind `LLM_PROVIDER`/`LLM_MODEL`/`LLM_API_KEY` env vars, so switching providers (e.g. OpenAI, Anthropic) or models means changing one default/env var, not rewriting the pipeline.
 - **Grounded prompting**: the prompt (`app/rag.py::PROMPT_TEMPLATE`) explicitly instructs the model to answer only from the provided context, to say so verbatim when the context is insufficient, and not to fabricate citations, including for out-of-document questions.
 
@@ -124,12 +125,15 @@ See `.env.example` for the full list with comments. Summary:
 | `PDF_PATH` | Source PDF to ingest | `data/Document.pdf` |
 | `EMBEDDING_MODEL` | Local embedding model | `sentence-transformers/all-MiniLM-L6-v2` |
 | `CHROMA_PERSIST_DIR` | Where the Chroma vector database is stored | `data/chroma` |
+| `RERANKER_MODEL` | Local cross-encoder reranker model | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
+| `RETRIEVAL_CANDIDATE_K` | Candidate chunks pulled from Chroma before reranking | `10` |
+| `RETRIEVAL_TOP_K` | Top reranked chunks passed to the LLM | `4` |
 
 ## Limitations
 
-- **Retrieval quality on broad/natural-language questions is inconsistent.** `all-MiniLM-L6-v2` is a small general-purpose embedding model, not tuned for asymmetric question→passage retrieval. On this document, a few generic, keyword-dense passages (e.g. the paper's contributions list) tend to rank highly across many unrelated questions, sometimes crowding out the actual answer passage from the top-k results. Keyword-style queries retrieve noticeably better than natural-language questions in testing. This was diagnosed in detail during development and is a known, accepted limitation rather than a bug.
+- **Retrieval quality on broad/natural-language questions is inconsistent, even with reranking.** `all-MiniLM-L6-v2` is a small general-purpose embedding model, not tuned for asymmetric question→passage retrieval, so the initial candidate pool from Chroma can miss the true answer passage entirely. The cross-encoder reranker (`app/reranker.py`) can only reorder the candidates it's given — it improves ranking within the candidate_k pool but can't recover a relevant chunk that similarity search didn't retrieve in the first place. A few generic, keyword-dense passages (e.g. the paper's contributions list) still tend to crowd out the true answer on some questions. This was diagnosed in detail during development and is a known, accepted limitation rather than a bug.
 - **Single-document, single-collection**: the app is wired to one PDF (`data/Document.pdf`) and one Chroma collection; it does not support multi-document ingestion or per-request document selection.
-- **No reranking, hybrid search, caching, or evaluation metrics** — explicitly out of scope for this assessment (listed as optional features).
+- **No hybrid search or caching** — explicitly out of scope for this assessment (listed as optional features).
 - **No conversation memory**: each `/ask` request is independent; there is no multi-turn context.
 - **No authentication or rate limiting** on the API.
 - **Source references are page-level only** (via `page_number`), not exact text spans within a page.
